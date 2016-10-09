@@ -192,15 +192,13 @@ class DbApiHook(BaseHook):
         i = 0
         for row in rows:
             i += 1
-            l = []
-            for cell in row:
-                l.append(self._serialize_cell(cell))
-            values = tuple(l)
+            values = tuple(row)
+            parameters = ",".join(['%s'] * len(values))
             sql = "INSERT INTO {0} {1} VALUES ({2});".format(
                 table,
                 target_fields,
-                ",".join(values))
-            cur.execute(sql)
+                parameters)
+            cur.execute(sql, values)
             if commit_every and i % commit_every == 0:
                 conn.commit()
                 logging.info(
@@ -210,19 +208,6 @@ class DbApiHook(BaseHook):
         conn.close()
         logging.info(
             "Done loading. Loaded a total of {i} rows".format(**locals()))
-
-    @staticmethod
-    def _serialize_cell(cell):
-        if isinstance(cell, basestring):
-            return "'" + str(cell).replace("'", "''") + "'"
-        elif cell is None:
-            return 'NULL'
-        elif isinstance(cell, numpy.datetime64):
-            return "'" + str(cell) + "'"
-        elif isinstance(cell, datetime):
-            return "'" + cell.isoformat() + "'"
-        else:
-            return str(cell)
 
     def bulk_dump(self, table, tmp_file):
         """
